@@ -47,8 +47,8 @@ A: How's the food?              B: It's spicy.
 
 ## 🎨 이미지 (Canva)
 
-카드 그림은 `images/foods/<음식>.png`, `images/tastes/<맛>.png` 에서 불러옵니다.
-Canva에서 만든 그림을 이 이름으로 넣으면 바로 보이고, 파일이 없으면 이모지 타일로 대체됩니다.
+카드 그림 20장(음식 10 · 맛 10)은 **Canva AI 이미지 생성**으로 만들어 `images/foods/`, `images/tastes/` 에 넣었습니다.
+같은 이름의 PNG로 바꾸면 그림이 교체되고, 파일이 없으면 이모지 타일로 대체됩니다.
 파일 이름 목록은 [`images/README.md`](images/README.md), Canva 그림 문구는 `data.js`의 `CANVA_PROMPTS`에 있습니다.
 
 ## 사용 방법
