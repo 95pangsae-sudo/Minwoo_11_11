@@ -1,37 +1,55 @@
-# Can you come to the ___? · 내가 선택한 행사에 친구 초대하기
+# Would you like some ___? · 음식 권하고 맛 말하기
 
-6학년 영어 **초대하고 대답하기** 단원 학습용 웹앱입니다.
-교과서의 행사 표현(`Can you come to my birthday party?` 등)뿐 아니라 **초등학생이 좋아할 행사**로
-초대하고, **승낙·거절**하고, **약속 장소·시간**까지 말하며 익힐 수 있도록 만들었습니다.
-(5학년 *What will you do this summer?* 페이지와 같은 구성, 🎉 파티 테마 디자인)
+영어 **음식 권하고 맛 말하기** 단원 학습용 웹앱입니다.
+기존 *Can you come to the ___?* 웹앱과 같은 구성(5개 탭 · 단어 뜻 풍선 · 말하기 채점 · 역할극)에
+이 단원의 주요 표현을 넣었습니다. (🍽️ 음식 테마 디자인)
 
 ## 주요 표현
 
 | 역할 | 표현 |
 |------|------|
-| 초대 | **Can you come to (the) ___?** |
-| 승낙 | **Of course.** · Sure. · Yes, I can. · Sounds fun! · Okay, I'll be there. |
-| 거절 | **Sorry, but I can't. I have a ___.** |
-| 약속 | **Please come to (장소) at (시간).** |
+| 권하기 | **Would you like some ___?** |
+| 대답 | **Yes, please.** · (사양) No, thanks. |
+| 맛 묻기 | **How's the food?** |
+| 맛 말하기 | **It's ___.** |
+
+```
+A: Would you like some curry?   B: Yes, please.
+A: How's the food?              B: It's spicy.
+```
+
+## 음식 10가지 · 맛 표현 10가지
+
+| # | 음식 (Would you like some ___?) | 맛 (It's ___.) |
+|---|------|------|
+| 1 | 🍛 curry 카레 | 🌶️ spicy 매워 |
+| 2 | 🍰 cake 케이크 | 🍬 sweet 달아 |
+| 3 | 🍟 French fries 감자튀김 | 🧂 salty 짜 |
+| 4 | 🍋 lemonade 레모네이드 | 😣 sour 셔 |
+| 5 | 🍵 green tea 녹차 | 😖 bitter 써 |
+| 6 | 🥩 bulgogi 불고기 | 😋 delicious 맛있어 |
+| 7 | 🍲 soup 수프 | 🔥 hot 뜨거워 |
+| 8 | 🍨 ice cream 아이스크림 | 🧊 cold 차가워 |
+| 9 | 🍗 fried chicken 프라이드치킨 | 🥨 crunchy 바삭바삭해 |
+| 10 | 🍕 pizza 피자 | 🤤 yummy 아주 맛있어 |
 
 ## 기능
 
-- 🎉 **초대하기 (Can you come to ~?)** — 초급·중급·고급 난이도 × 2가지 행사 종류, **총 54문장**
-  - 📘 교과서 행사 6개: my birthday party · taekwondo show · laser show · book festival · movie festival · cooking class party
-  - 🎈 재미있는 행사 12개: K-pop concert · slime festival · magic show · school festival · pizza party · robot show · game party · dance contest · Halloween party · sleepover party · water park party · fireworks festival
-- 💬 **대답하기** — 승낙 5개 카드 · 거절은 `Sorry, but I can't. I have a ___.` 빈칸에 이유 10개 중 골라 채우기
-- 📍 **약속 잡기** — `Please come to ___ at ___.` 빈칸에 장소 10개 · 시간 10개를 골라 채우고 듣기
-- 🎒 **내 행사 만들기** (워크시트 2번 · 내가 선택한 행사) — **행사 3개**(행사마다 행사 1개 + 약속 장소·시간 1개)와 **내 대답**(승낙 표현 1개 · 거절 문장 1개)을 고름
-  - 행사 탭을 눌러 가며 만들고, 말풍선 대화 빈칸이 채워지는 것을 확인 · 🎲 무작위 채우기 · 브라우저에 저장
-  - 📝 **워크시트에 적기** 표: 워크시트 2번 표와 같은 순서로 영어 문장을 보여 줌
-- 🎤 **연습 · 짝 활동** (워크시트 3번) — 👫 짝 활동 카드(행사별 초대·약속 문장 크게, 친구 대답 ○/× 안내) + 컴퓨터와 미리 연습
-  - 만든 행사마다 `초대 → 대답 → 약속` 대화를 연습
-  - 친구가 **승낙**할 때 / **거절**할 때 두 버전, 줄마다 🎙️ 말하기로 정확도 측정
-  - 🎭 역할극: 내가 A(초대) 또는 B(대답)를 맡으면 컴퓨터가 상대 역할을 읽어 주고 내 차례에 마이크가 켜짐 (Chrome 권장)
+- 🍽️ **음식 권하기** — 음식 10개 × 초급·중급·고급 대화 카드 **총 30개** (A/B 4줄 대화, 줄마다 듣기)
+  - 초급: 기본 대화 · 중급: `Here you are.` / `It's really ___.` · 고급: 맛을 말한 뒤 한마디 더 (`It's spicy, but I love it.`)
+- 💬 **대답하기** — `Yes, please.` / `No, thanks.` 카드 + `Would you like some ___?` 빈칸에 음식 골라 채우기
+- 😋 **맛 말하기** — 맛 표현 10개 카드 + `How's the food? It's ___.` 빈칸 채우기
+- 🎒 **내 식탁 만들기** — 친구에게 권할 **음식 3개**(음식 1 + 맛 1)를 골라 대화 완성 · 🎲 무작위 채우기 · 📝 공책에 적기 표 · 브라우저에 저장
+- 🎤 **연습 · 짝 활동** — 👫 짝 활동 카드(친구가 말한 맛 표시) + 줄마다 🎙️ 말하기 정확도 측정 + 🎭 역할극(A 권하기 / B 대답하기, Yes·No 두 버전)
 - 단어 클릭 시 **뜻 풍선 + 발음**, 말하기 **속도 조절** 슬라이더
 
-브라우저 내장 **Web Speech API**(음성 합성·음성 인식)를 사용합니다.
-내 행사 세트·대답과 연습 기록은 브라우저(localStorage)에 저장됩니다.
+브라우저 내장 **Web Speech API**(음성 합성·음성 인식)를 사용합니다. (Chrome 권장)
+
+## 🎨 이미지 (Canva)
+
+카드 그림은 `images/foods/<음식>.png`, `images/tastes/<맛>.png` 에서 불러옵니다.
+Canva에서 만든 그림을 이 이름으로 넣으면 바로 보이고, 파일이 없으면 이모지 타일로 대체됩니다.
+파일 이름 목록은 [`images/README.md`](images/README.md), Canva 그림 문구는 `data.js`의 `CANVA_PROMPTS`에 있습니다.
 
 ## 사용 방법
 
@@ -42,6 +60,7 @@
 | 파일 | 설명 |
 |------|------|
 | `index.html` | 화면 구조(탭·섹션) |
-| `style.css`  | 디자인·파티 테마 |
-| `data.js`    | 초대·대답·장소·시간 문장, 단어 뜻, 세트 만들기 데이터 |
-| `app.js`     | 음성·단어 풍선·세트 만들기·세트 연습(역할극) 채점 로직 |
+| `style.css`  | 디자인·음식 테마 |
+| `data.js`    | 음식·맛·대화 문장, Canva 그림 문구, 단어 뜻 |
+| `app.js`     | 음성·단어 풍선·대화 카드·식탁 만들기·연습(역할극) 채점 로직 |
+| `images/`    | Canva 그림을 넣는 폴더 |

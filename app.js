@@ -1,8 +1,9 @@
 /* =========================================================
- * 6학년 · Can you come to the ___? · 듣고 따라 말하기 웹 앱
+ * Would you like some ___? · How's the food? · 듣고 따라 말하기 웹 앱
  * - 음성 출력: Web Speech API (SpeechSynthesis)
  * - 단어 클릭: 단어 발음 + 뜻 풍선(popup)
- * - 내 행사 세트 만들기: 세트 3개(행사 + 약속 장소/시간) + 내 대답(승낙/거절)
+ * - 이미지: Canva에서 만든 그림(images/foods, images/tastes) · 없으면 이모지 타일
+ * - 내 식탁 만들기: 세트 3개(음식 + 맛) + 친구 대답(Yes, please. / No, thanks.)
  * - 세트 연습: 세트별 대화를 줄마다 말하기 + 역할극(A/B) 채점
  * - 따라 말하기 채점: Web Speech API (SpeechRecognition)
  * ========================================================= */
@@ -95,19 +96,23 @@ function buildWords(sentence) {
   return frag;
 }
 
-/* ---------- 실사 이미지 ---------- */
-let imageMode = false; // false: 모든 카드를 같은 이모지 타일로 통일 (true로 바꾸면 AI 실사 사진 시도)
-function hashSeed(s) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return h % 100000;
-}
-function imageUrl(prompt) {
-  const p = encodeURIComponent("a bright, friendly, realistic photo of " + prompt + ", for kids");
-  return `https://image.pollinations.ai/prompt/${p}?width=400&height=260&nologo=true&seed=${hashSeed(prompt)}`;
+
+/* ---------- Canva 이미지 (없으면 이모지 타일) ---------- */
+function makeVisual(kind, id, emoji, alt, cls) {
+  const em = document.createElement("div");
+  em.className = cls || "emoji";
+  em.textContent = emoji;
+  if (!id) return em;
+  const img = document.createElement("img");
+  img.className = "photo";
+  img.loading = "lazy";
+  img.alt = alt || id;
+  img.src = IMAGE_DIR[kind] + id + IMAGE_EXT;
+  img.addEventListener("error", () => img.replaceWith(em));
+  return img;
 }
 
-/* ---------- 카드 만들기 ---------- */
+/* ---------- 카드 만들기 (한 문장) ---------- */
 function makeCard(item, opts) {
   opts = opts || {};
   const div = document.createElement("div");
@@ -119,7 +124,6 @@ function makeCard(item, opts) {
       () => div.classList.remove("speaking"));
   }
 
-  // 윗줄: 태그 + 듣기
   const top = document.createElement("div");
   top.className = "card-top";
   const tag = document.createElement("span");
@@ -131,27 +135,8 @@ function makeCard(item, opts) {
   listenAll.addEventListener("click", e => { e.stopPropagation(); speakSentence(); });
   top.append(tag, listenAll);
 
-  // 이모지 또는 실사 이미지
-  let visual;
-  if (imageMode && item.imgPrompt) {
-    visual = document.createElement("img");
-    visual.className = "photo";
-    visual.loading = "lazy";
-    visual.alt = item.en;
-    visual.src = imageUrl(item.imgPrompt);
-    visual.addEventListener("error", () => {
-      const em = document.createElement("div");
-      em.className = "emoji";
-      em.textContent = item.emoji;
-      visual.replaceWith(em);
-    });
-  } else {
-    visual = document.createElement("div");
-    visual.className = "emoji";
-    visual.textContent = item.emoji;
-  }
+  const visual = makeVisual(opts.kind, opts.imgId, item.emoji, item.en);
 
-  // 안쪽 문장 박스: 문장 + 한글 + 스피커
   const box = document.createElement("div");
   box.className = "sentence-box";
   const txt = document.createElement("div");
@@ -171,35 +156,65 @@ function makeCard(item, opts) {
   box.append(txt, speakBtn);
 
   div.append(top, visual, box);
-
   return div;
 }
 
-function renderGrid(id, list, opts) {
-  opts = opts || {};
-  const grid = document.getElementById(id);
-  grid.innerHTML = "";
-  list.forEach((item, i) => {
-    const cardOpts = {};
-    if (opts.tones) { cardOpts.tone = i % 6; if (!opts.noIndex) cardOpts.index = i + 1; }
-    grid.appendChild(makeCard(item, cardOpts));
+/* ---------- 대화 카드 (A/B 4줄) ---------- */
+function makeDialogueCard(food, lines, idx) {
+  const div = document.createElement("div");
+  div.className = "card dlg-card tone-" + (idx % 6);
+
+  const top = document.createElement("div");
+  top.className = "card-top";
+  const tag = document.createElement("span");
+  tag.className = "card-tag";
+  tag.textContent = `CARD ${idx + 1} · ${food.emoji} ${food.en}`;
+  const listenAll = document.createElement("button");
+  listenAll.className = "listen-all";
+  listenAll.textContent = "대화 듣기 ▶";
+  listenAll.addEventListener("click", e => {
+    e.stopPropagation();
+    speak(lines.map(l => l.en).join(" "), null,
+      () => div.classList.add("speaking"),
+      () => div.classList.remove("speaking"));
   });
+  top.append(tag, listenAll);
+
+  const visual = makeVisual("food", food.id, food.emoji, food.en);
+
+  const box = document.createElement("div");
+  box.className = "dlg-lines";
+  lines.forEach(l => {
+    const row = document.createElement("div");
+    row.className = "dlg-line who-" + l.who.toLowerCase();
+    const who = document.createElement("span");
+    who.className = "dlg-who";
+    who.textContent = l.who;
+    const txt = document.createElement("div");
+    txt.className = "dlg-text";
+    const en = document.createElement("div"); en.className = "en"; en.appendChild(buildWords(l.en));
+    const ko = document.createElement("div"); ko.className = "ko"; ko.textContent = l.ko;
+    txt.append(en, ko);
+    const btn = document.createElement("button");
+    btn.className = "speak-btn small";
+    btn.setAttribute("aria-label", "이 줄 듣기");
+    btn.textContent = "🔊";
+    btn.addEventListener("click", e => { e.stopPropagation(); speak(l.en); });
+    row.append(who, txt, btn);
+    box.appendChild(row);
+  });
+
+  div.append(top, visual, box);
+  return div;
 }
 
-/* ---------- 난이도(초급/중급/고급) + 활동 종류 ---------- */
+/* ---------- 난이도(초급/중급/고급) ---------- */
 let currentLevel = "beginner";
-let currentCategory = "all";
-function currentSuggestions() { return SUGGESTION_LEVELS[currentLevel]; }
 
 function renderSuggestions() {
-  const lvl = currentSuggestions();
-  const view = [];
-  lvl.forEach((item, i) => {
-    if (currentCategory === "all" || SUGGESTION_CATEGORIES[i] === currentCategory) {
-      view.push(Object.assign({}, item, { imgPrompt: IMAGE_PROMPTS[i] }));
-    }
-  });
-  renderGrid("suggestion-grid", view, { tones: true });
+  const grid = document.getElementById("suggestion-grid");
+  grid.innerHTML = "";
+  FOODS.forEach((food, i) => grid.appendChild(makeDialogueCard(food, dialogueFor(currentLevel, food), i)));
 }
 
 document.querySelectorAll(".level-btn").forEach(btn => {
@@ -213,67 +228,18 @@ document.querySelectorAll(".level-btn").forEach(btn => {
   });
 });
 
-document.querySelectorAll(".cat-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".cat-btn").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    currentCategory = btn.dataset.cat;
-    synth.cancel();
-    hidePopup();
-    renderSuggestions();
-  });
-});
-
-/* ===========================================================
- * 🎒 내 행사 세트 만들기 (세트 3개: 행사 1 + 약속 장소·시간 1)  +  내 대답 (승낙 1 · 거절 1)
- * =========================================================== */
-const SET_COUNT = 3;
-let mySets = [];        // [{ event, place, time }] (영어 문구 en 으로 저장)
-let myAccept = ACCEPT_EXPRESSIONS[0].en;
-let myReason = null;    // REFUSE_REASONS 의 en
-let setMode = "accept"; // 위 대화 미리보기: 친구가 승낙("accept") / 거절("refuse")
-let curSet = 0;
-let stats = {};         // 문장별 정확도 기록
-
-try {
-  const saved = JSON.parse(localStorage.getItem("invite_sets") || "null");
-  if (saved && Array.isArray(saved.sets)) {
-    mySets = saved.sets;
-    if (saved.accept) myAccept = saved.accept;
-    if (saved.reason) myReason = saved.reason;
-    if (saved.mode === "refuse" || saved.mode === "accept") setMode = saved.mode;
-  }
-} catch (e) {}
-while (mySets.length < SET_COUNT) mySets.push({ event: null, place: null, time: null });
-try { stats = JSON.parse(localStorage.getItem("invite_stats") || "{}") || {}; } catch (e) {}
-
-function persist() {
-  try {
-    localStorage.setItem("invite_sets", JSON.stringify({ sets: mySets, accept: myAccept, reason: myReason, mode: setMode }));
-    localStorage.setItem("invite_stats", JSON.stringify(stats));
-  } catch (e) {}
+/* ---------- 대답 카드 · 맛 카드 ---------- */
+function renderAnswerGrid() {
+  const grid = document.getElementById("answer-grid");
+  grid.innerHTML = "";
+  ANSWER_EXPRESSIONS.forEach((a, i) => grid.appendChild(makeCard(a, { tone: i === 0 ? 2 : 5 })));
 }
-const findEvent = en => BUILD_EVENTS.find(x => x.en === en) || null;
-const findPlace = en => PLACE_EXPRESSIONS.find(x => x.en === en) || null;
-const findTime  = en => TIME_EXPRESSIONS.find(x => x.en === en) || null;
-const findAccept = en => ACCEPT_EXPRESSIONS.find(x => x.en === en) || ACCEPT_EXPRESSIONS[0];
-const findReason = en => REFUSE_REASONS.find(x => x.en === en) || null;
-function setComplete(s) { return !!(findEvent(s.event) && findPlace(s.place) && findTime(s.time)); }
-function completeCount() { return mySets.filter(setComplete).length; }
-
-/* 세트 → 대화 줄 (승낙/거절 버전) */
-function setLines(s, mode) {
-  const ev = findEvent(s.event), pl = findPlace(s.place), tm = findTime(s.time);
-  const acc = findAccept(myAccept), rs = findReason(myReason);
-  const lines = [{ who: "A", en: `Can you come to ${ev.en}?`, ko: `${ev.ko}에 올 수 있니?` }];
-  if (mode === "refuse") {
-    lines.push({ who: "B", en: `Sorry, but I can't. I have a ${rs ? rs.en : "piano lesson"}.`,
-                 ko: `미안하지만 못 가. 나 ${rs ? rs.ko : "피아노 수업"}(이)가 있어.` });
-  } else {
-    lines.push({ who: "B", en: acc.en, ko: acc.ko });
-    lines.push({ who: "A", en: `Please come to ${pl.en} at ${tm.en}.`, ko: `${tm.ko}에 ${pl.ko}(으)로 와 줘.` });
-  }
-  return lines;
+function renderTasteGrid() {
+  const grid = document.getElementById("taste-grid");
+  grid.innerHTML = "";
+  TASTES.forEach((t, i) => grid.appendChild(
+    makeCard({ en: `It's ${t.en}.`, ko: `${t.ko}.`, emoji: t.emoji },
+      { tone: i % 6, index: i + 1, kind: "taste", imgId: t.id })));
 }
 
 function makeChip(text, cls, isOn, onClick) {
@@ -283,118 +249,161 @@ function makeChip(text, cls, isOn, onClick) {
   c.addEventListener("click", onClick);
   return c;
 }
-function setBlank(id, en) {
-  const el = document.getElementById(id);
+
+/* ---------- 빈칸 채우기 공통 ---------- */
+let lastFillSpoken = "";
+function fillActions(wrap, en) {
+  wrap.innerHTML = "";
+  if (!en) return;
+  const listenBtn = document.createElement("button");
+  listenBtn.className = "btn primary";
+  listenBtn.textContent = "🔊 문장 듣기";
+  listenBtn.addEventListener("click", () => speak(en));
+  wrap.append(listenBtn);
+  if (en !== lastFillSpoken) { lastFillSpoken = en; speak(en); }
+}
+function fillBlank(el, en) {
   el.classList.toggle("filled", !!en);
   if (en) { el.innerHTML = ""; el.appendChild(buildWords(en)); }
   else el.textContent = "________";
 }
+
+/* 권하기: Would you like some ___? → Yes, please. */
+let fillFood = null;
+function renderOfferFill() {
+  const row = document.getElementById("offer-chips");
+  row.innerHTML = "";
+  FOODS.forEach(f => row.appendChild(makeChip(`${f.emoji} ${f.en}`, "act", fillFood === f, () => {
+    fillFood = f; renderOfferFill();
+  })));
+  fillBlank(document.getElementById("offer-blank"), fillFood && fillFood.en);
+  document.getElementById("offer-ko").textContent = `${fillFood ? fillFood.ko : "________"} 좀 먹을래?`;
+  fillActions(document.getElementById("offer-actions"),
+    fillFood && `Would you like some ${fillFood.en}? Yes, please.`);
+}
+
+/* 맛 말하기: How's the food? It's ___. */
+let fillTaste = null;
+function renderTasteFill() {
+  const row = document.getElementById("taste-chips");
+  row.innerHTML = "";
+  TASTES.forEach(t => row.appendChild(makeChip(`${t.emoji} ${t.en}`, "with", fillTaste === t, () => {
+    fillTaste = t; renderTasteFill();
+  })));
+  fillBlank(document.getElementById("taste-blank"), fillTaste && fillTaste.en);
+  document.getElementById("taste-ko").textContent = `${fillTaste ? fillTaste.ko : "________"}.`;
+  fillActions(document.getElementById("taste-actions"),
+    fillTaste && `How's the food? It's ${fillTaste.en}.`);
+}
+
+/* ===========================================================
+ * 🎒 내 식탁 만들기 (세트 3개: 음식 1 + 맛 1)
+ * =========================================================== */
+const SET_COUNT = 3;
+let mySets = [];        // [{ food, taste }] (id 로 저장)
+let setMode = "accept"; // 친구 대답: Yes, please.("accept") / No, thanks.("refuse")
+let curSet = 0;
+let stats = {};
+
+try {
+  const saved = JSON.parse(localStorage.getItem("food_sets") || "null");
+  if (saved && Array.isArray(saved.sets)) {
+    mySets = saved.sets.slice(0, SET_COUNT);
+    if (saved.mode === "refuse" || saved.mode === "accept") setMode = saved.mode;
+  }
+} catch (e) {}
+while (mySets.length < SET_COUNT) mySets.push({ food: null, taste: null });
+try { stats = JSON.parse(localStorage.getItem("food_stats") || "{}") || {}; } catch (e) {}
+
+function persist() {
+  try {
+    localStorage.setItem("food_sets", JSON.stringify({ sets: mySets, mode: setMode }));
+    localStorage.setItem("food_stats", JSON.stringify(stats));
+  } catch (e) {}
+}
+function setComplete(s) { return !!(findFood(s.food) && findTaste(s.taste)); }
+function completeCount() { return mySets.filter(setComplete).length; }
+
+/* 세트 → 대화 줄 (Yes / No 버전) */
+function setLines(s, mode) {
+  const f = findFood(s.food), t = findTaste(s.taste);
+  if (mode === "refuse") {
+    return [
+      { who: "A", en: `Would you like some ${f.en}?`, ko: `${f.ko} 좀 먹을래?` },
+      { who: "B", en: "No, thanks.", ko: "아니, 괜찮아." },
+    ];
+  }
+  return basicLines(f, t);
+}
+
+function setBlank(id, en) { fillBlank(document.getElementById(id), en); }
+
 function updateSetBadge() {
   const c = document.getElementById("set-count");
   if (c) c.textContent = `${completeCount()}/${SET_COUNT}`;
   document.querySelectorAll("#set-tabs .set-tab").forEach((b, i) => {
     b.classList.toggle("active", i === curSet);
     b.classList.toggle("done", setComplete(mySets[i]));
-    const ev = findEvent(mySets[i].event);
-    b.textContent = `행사 ${i + 1} ${ev ? ev.emoji : ""}${setComplete(mySets[i]) ? " ✓" : ""}`;
+    const f = findFood(mySets[i].food);
+    b.textContent = `음식 ${i + 1} ${f ? f.emoji : ""}${setComplete(mySets[i]) ? " ✓" : ""}`;
   });
 }
 
 function renderBuilder() {
   const s = mySets[curSet];
-  const evWrap = document.getElementById("build-events");
-  const placeRow = document.getElementById("build-place");
-  const timeRow = document.getElementById("build-time");
-  const acceptRow = document.getElementById("build-accept");
-  const refuseRow = document.getElementById("build-refuse");
-  evWrap.innerHTML = ""; placeRow.innerHTML = ""; timeRow.innerHTML = ""; acceptRow.innerHTML = ""; refuseRow.innerHTML = "";
-
-  const usedElsewhere = new Set(mySets.filter((x, i) => i !== curSet).map(x => x.event).filter(Boolean));
-  BUILD_CATS.forEach(cat => {
-    const items = BUILD_EVENTS.filter(a => a.cat === cat.key);
-    const title = document.createElement("div");
-    title.className = "chip-group-title";
-    title.textContent = cat.label;
-    const row = document.createElement("div");
-    row.className = "chip-row wrap";
-    items.forEach(a => {
-      const chip = makeChip(`${a.emoji} ${a.en}`, "act", s.event === a.en, () => {
-        s.event = a.en; persist(); renderBuilder(); updateSetPreview(true);
-      });
-      if (usedElsewhere.has(a.en)) { chip.classList.add("used"); chip.title = "다른 세트에서 이미 골랐어요"; }
-      row.appendChild(chip);
+  const foodRow = document.getElementById("build-food");
+  const tasteRow = document.getElementById("build-taste");
+  foodRow.innerHTML = ""; tasteRow.innerHTML = "";
+  const usedElsewhere = new Set(mySets.filter((x, i) => i !== curSet).map(x => x.food).filter(Boolean));
+  FOODS.forEach(f => {
+    const chip = makeChip(`${f.emoji} ${f.en}`, "act", s.food === f.id, () => {
+      s.food = f.id; persist(); renderBuilder(); updateSetPreview(true);
     });
-    evWrap.append(title, row);
+    if (usedElsewhere.has(f.id)) { chip.classList.add("used"); chip.title = "다른 세트에서 이미 골랐어요"; }
+    foodRow.appendChild(chip);
   });
-  PLACE_EXPRESSIONS.forEach(p => {
-    placeRow.appendChild(makeChip(`${p.emoji} ${p.en}`, "place", s.place === p.en, () => {
-      s.place = p.en; persist(); renderBuilder(); updateSetPreview(true);
+  TASTES.forEach(t => {
+    tasteRow.appendChild(makeChip(`${t.emoji} ${t.en}`, "with", s.taste === t.id, () => {
+      s.taste = t.id; persist(); renderBuilder(); updateSetPreview(true);
     }));
   });
-  TIME_EXPRESSIONS.forEach(t => {
-    timeRow.appendChild(makeChip(`${t.emoji} ${t.en}`, "with", s.time === t.en, () => {
-      s.time = t.en; persist(); renderBuilder(); updateSetPreview(true);
-    }));
-  });
-  ACCEPT_EXPRESSIONS.forEach(m => {
-    acceptRow.appendChild(makeChip(`${m.emoji} ${m.en}`, "when", myAccept === m.en, () => {
-      myAccept = m.en; setMode = "accept"; persist(); renderBuilder(); updateSetPreview(); speak(m.en);
-    }));
-  });
-  REFUSE_REASONS.forEach(r => {
-    refuseRow.appendChild(makeChip(`${r.emoji} ${r.en}`, "where", myReason === r.en, () => {
-      myReason = r.en; setMode = "refuse"; persist(); renderBuilder(); updateSetPreview();
-      speak(`Sorry, but I can't. I have a ${r.en}.`);
-    }));
-  });
-  const rb = document.getElementById("build-refuse-blank");
-  rb.classList.toggle("filled", !!myReason);
-  rb.textContent = myReason || "________";
   updateSetBadge();
 }
 
 let lastSetSpoken = "";
-/* 미리보기 대화를 들려줄 수 있는 상태인지 (거절 버전은 약속 문장이 없어 행사만 있으면 됨) */
-function setPlayable(s) { return setMode === "refuse" ? !!(findEvent(s.event) && findReason(myReason)) : setComplete(s); }
+function setPlayable(s) { return setMode === "refuse" ? !!findFood(s.food) : setComplete(s); }
 
 function updateSetPreview(autoSpeak) {
   const s = mySets[curSet];
-  const ev = findEvent(s.event), pl = findPlace(s.place), tm = findTime(s.time);
-  const acc = findAccept(myAccept), rs = findReason(myReason);
+  const f = findFood(s.food), t = findTaste(s.taste);
   const refusing = setMode === "refuse";
-  setBlank("set-event", ev && ev.en);
-  document.getElementById("set-event-ko").textContent = `${ev ? ev.ko : "________"}에 올 수 있니?`;
+  setBlank("set-food", f && f.en);
+  document.getElementById("set-food-ko").textContent = `${f ? f.ko : "________"} 좀 먹을래?`;
 
-  // 친구의 대답 줄: 승낙 표현 또는 거절 문장
   document.getElementById("set-mode-accept").classList.toggle("active", !refusing);
   document.getElementById("set-mode-refuse").classList.toggle("active", refusing);
-  const answerEn = refusing ? `Sorry, but I can't. I have a ${rs ? rs.en : "________"}.` : acc.en;
-  const answerKo = refusing ? `미안하지만 못 가. 나 ${rs ? rs.ko : "________"}(이)가 있어.` : acc.ko;
   const al = document.getElementById("set-answer-line");
-  al.innerHTML = ""; al.appendChild(buildWords(answerEn));
-  document.getElementById("set-answer-ko").textContent = answerKo;
+  al.innerHTML = ""; al.appendChild(buildWords(refusing ? "No, thanks." : "Yes, please."));
+  document.getElementById("set-answer-ko").textContent = refusing ? "아니, 괜찮아." : "응, 줘.";
   document.getElementById("set-answer-row").classList.toggle("refusing", refusing);
 
-  // 약속 문장 줄: 거절하면 말하지 않으므로 흐리게 (거절 버전 대화에서 빠짐)
-  setBlank("set-place", pl && pl.en);
-  setBlank("set-time", tm && tm.en);
-  document.getElementById("set-meet-ko").textContent = `${tm ? tm.ko : "________"}에 ${pl ? pl.ko : "________"}(으)로 와 줘.`;
-  document.getElementById("set-meet-row").classList.toggle("dimmed", refusing);
+  setBlank("set-taste", t && t.en);
+  document.getElementById("set-taste-ko").textContent = `${t ? t.ko : "________"}.`;
+  document.getElementById("set-ask-row").classList.toggle("dimmed", refusing);
+  document.getElementById("set-taste-row").classList.toggle("dimmed", refusing);
 
   const status = document.getElementById("set-status");
   const complete = setComplete(s);
   status.className = "dlg-status" + (complete ? " ok" : "");
-  if (!ev) status.textContent = `행사 ${curSet + 1} · 1️⃣ 초대할 행사를 골라보세요 👇`;
-  else if (refusing && !rs) status.textContent = `행사 ${curSet + 1} · ❌ 거절 버전이에요. 아래에서 ❌ 거절 이유를 골라요 👇`;
-  else if (!pl || !tm) status.textContent = `행사 ${curSet + 1} · 2️⃣ 약속 ${!pl ? "📍 장소" : ""}${!pl && !tm ? "와 " : ""}${!tm ? "⏰ 시간" : ""}을 골라요 👇`;
-  else if (refusing) status.textContent = `❌ 친구가 거절하면 약속 문장은 말하지 않아요. ⭕ 승낙을 누르면 약속까지 이어져요.`;
-  else status.textContent = `✅ 행사 ${curSet + 1} 완성! ${completeCount() < SET_COUNT ? "다음 행사도 만들어 보세요." : "세 행사 모두 완성! 📝 워크시트에 적고 🎤 연습으로 가요."}`;
+  if (!f) status.textContent = `음식 ${curSet + 1} · 1️⃣ 친구에게 권할 음식을 골라보세요 👇`;
+  else if (refusing) status.textContent = `🙅 친구가 No, thanks. 라고 하면 맛은 묻지 않아요. 🙆 Yes, please. 를 누르면 맛까지 이어져요.`;
+  else if (!t) status.textContent = `음식 ${curSet + 1} · 2️⃣ ${f.en} 의 맛을 골라요 👇`;
+  else status.textContent = `✅ 음식 ${curSet + 1} 완성! ${completeCount() < SET_COUNT ? "다음 음식도 골라 보세요." : "세 음식 모두 완성! 📝 공책에 적고 🎤 연습으로 가요."}`;
   renderSheetSummary();
   const listen = document.getElementById("set-listen");
-  listen.textContent = refusing ? "🔊 대화 듣기 (거절)" : "🔊 대화 듣기 (승낙)";
+  listen.textContent = refusing ? "🔊 대화 듣기 (No)" : "🔊 대화 듣기 (Yes)";
   listen.disabled = !setPlayable(s);
   updateSetBadge();
-  // 자동 읽기는 사용자가 칩을 눌러 고른 직후에만 (페이지 열기·탭 전환 때는 조용히)
   if (setPlayable(s) && autoSpeak) {
     const en = setLines(s, setMode).map(l => l.en).join(" ");
     if (en !== lastSetSpoken) { lastSetSpoken = en; speak(en); }
@@ -408,24 +417,21 @@ document.querySelectorAll("#set-mode .cat-btn").forEach(btn => {
     persist(); renderBuilder(); updateSetPreview();
   });
 });
-
 document.querySelectorAll("#set-tabs .set-tab").forEach(btn => {
   btn.addEventListener("click", () => {
     curSet = +btn.dataset.set; synth.cancel(); lastSetSpoken = "";
     renderBuilder(); updateSetPreview();
   });
 });
-document.getElementById("set-speak-invite").addEventListener("click", () => {
-  const ev = findEvent(mySets[curSet].event); if (ev) speak(`Can you come to ${ev.en}?`);
+document.getElementById("set-speak-offer").addEventListener("click", () => {
+  const f = findFood(mySets[curSet].food); if (f) speak(`Would you like some ${f.en}?`);
 });
 document.getElementById("set-speak-answer").addEventListener("click", () => {
-  const rs = findReason(myReason);
-  if (setMode === "refuse") { if (rs) speak(`Sorry, but I can't. I have a ${rs.en}.`); }
-  else speak(findAccept(myAccept).en);
+  speak(setMode === "refuse" ? "No, thanks." : "Yes, please.");
 });
-document.getElementById("set-speak-meet").addEventListener("click", () => {
-  const s = mySets[curSet], pl = findPlace(s.place), tm = findTime(s.time);
-  if (pl && tm) speak(`Please come to ${pl.en} at ${tm.en}.`);
+document.getElementById("set-speak-ask").addEventListener("click", () => speak("How's the food?"));
+document.getElementById("set-speak-taste").addEventListener("click", () => {
+  const t = findTaste(mySets[curSet].taste); if (t) speak(`It's ${t.en}.`);
 });
 document.getElementById("set-listen").addEventListener("click", () => {
   const s = mySets[curSet];
@@ -434,19 +440,17 @@ document.getElementById("set-listen").addEventListener("click", () => {
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 document.getElementById("set-random").addEventListener("click", () => {
   const s = mySets[curSet];
-  const used = new Set(mySets.filter((x, i) => i !== curSet).map(x => x.event));
-  const pool = BUILD_EVENTS.filter(e => !used.has(e.en));
-  s.event = pick(pool.length ? pool : BUILD_EVENTS).en;
-  s.place = pick(PLACE_EXPRESSIONS).en;
-  s.time = pick(TIME_EXPRESSIONS).en;
-  if (!myReason) myReason = pick(REFUSE_REASONS).en;
+  const used = new Set(mySets.filter((x, i) => i !== curSet).map(x => x.food));
+  const pool = FOODS.filter(f => !used.has(f.id));
+  const f = pick(pool.length ? pool : FOODS);
+  s.food = f.id;
+  s.taste = f.taste;   // 그 음식에 어울리는 맛
   persist(); renderBuilder(); updateSetPreview(true);
 });
 document.getElementById("set-clear").addEventListener("click", () => {
-  mySets[curSet] = { event: null, place: null, time: null };
+  mySets[curSet] = { food: null, taste: null };
   synth.cancel(); persist(); renderBuilder(); updateSetPreview();
 });
-
 
 /* ---- 음성 인식 (정확도 측정) ---- */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -472,7 +476,7 @@ function wordsClose(a, b) {
   if (a.length >= 4 && b.length >= 4 && (a.startsWith(b) || b.startsWith(a))) return true;
   return Math.abs(a.length - b.length) <= 1 && levenshtein(a, b) <= 1;
 }
-const STOPWORDS = new Set(["a", "an", "the", "to", "of", "on", "in", "at", "for", "but", "i", "i'm", "i'll"]);
+const STOPWORDS = new Set(["a", "an", "the", "to", "of", "on", "in", "at", "for", "but", "i", "i'm", "i'll", "some", "it's", "its", "it", "is"]);
 function scoreMatch(target, heard) {
   const t = normalize(target).split(" ").filter(Boolean);
   const h = normalize(heard).split(" ").filter(Boolean);
@@ -592,7 +596,7 @@ function makeSpeakRow(en, ko, who) {
 
 
 /* ===========================================================
- * 📝 워크시트에 적기 (2번 표와 같은 순서)
+ * 📝 공책에 적기
  * =========================================================== */
 function sheetRow(label, en, ko) {
   const row = document.createElement("div");
@@ -615,18 +619,16 @@ function renderSheetSummary() {
   if (!box) return;
   box.innerHTML = "";
   mySets.forEach((s, i) => {
-    const ev = findEvent(s.event), pl = findPlace(s.place), tm = findTime(s.time);
-    box.appendChild(sheetRow(`내가 선택한 행사 ${i + 1}`, ev && `Can you come to ${ev.en}?`, ev && `${ev.ko}에 올 수 있니?`));
-    box.appendChild(sheetRow(`약속 시간과 장소 ${i + 1}`, pl && tm && `Please come to ${pl.en} at ${tm.en}.`, pl && tm && `${tm.ko}에 ${pl.ko}(으)로 와 줘.`));
+    const f = findFood(s.food), t = findTaste(s.taste);
+    box.appendChild(sheetRow(`권하기 ${i + 1}`, f && `Would you like some ${f.en}?`, f && `${f.ko} 좀 먹을래?`));
+    box.appendChild(sheetRow(`대답 ${i + 1}`, f && "Yes, please.", f && "응, 줘."));
+    box.appendChild(sheetRow(`맛 묻기 ${i + 1}`, f && "How's the food?", f && "음식 맛이 어때?"));
+    box.appendChild(sheetRow(`맛 말하기 ${i + 1}`, t && `It's ${t.en}.`, t && `${t.ko}.`));
   });
-  const rs = findReason(myReason);
-  box.appendChild(sheetRow("초대 거절 할 때", rs && `Sorry, but I can't. I have a ${rs.en}.`, rs && `미안하지만 못 가. 나 ${rs.ko}(이)가 있어.`));
-  const acc = findAccept(myAccept);
-  box.appendChild(sheetRow("초대 승낙 할 때 (말하기용)", acc.en, acc.ko));
 }
 
 /* ===========================================================
- * 👫 짝 활동 카드 (행사별 초대 문장 크게 + 친구 대답 안내)
+ * 👫 짝 활동 카드
  * =========================================================== */
 function renderPairCards() {
   const box = document.getElementById("pair-cards");
@@ -634,58 +636,72 @@ function renderPairCards() {
   const done = mySets.map((s, i) => [s, i]).filter(([s]) => setComplete(s));
   if (!done.length) {
     const p = document.createElement("p"); p.className = "practice-empty";
-    p.innerHTML = "아직 만든 행사가 없어요! <b>🎒 내 행사 만들기</b>에서 먼저 만들어요.";
+    p.innerHTML = "아직 만든 식탁이 없어요! <b>🎒 내 식탁 만들기</b>에서 먼저 만들어요.";
     box.appendChild(p); return;
   }
-  const rs = findReason(myReason), acc = findAccept(myAccept);
   done.forEach(([s, i]) => {
-    const ev = findEvent(s.event), pl = findPlace(s.place), tm = findTime(s.time);
+    const f = findFood(s.food), t = findTaste(s.taste);
     const card = document.createElement("div");
     card.className = "pair-card tone-" + (i % 6);
     const head = document.createElement("div"); head.className = "pair-head";
-    head.innerHTML = `<span class="card-tag tag-combo">행사 ${i + 1}</span><span class="pair-emoji">${ev.emoji}</span>`;
-    const invite = document.createElement("div"); invite.className = "pair-line me";
-    invite.innerHTML = `<div class="pair-who">🙋 나</div>`;
-    const inv = document.createElement("div"); inv.className = "pair-en"; inv.appendChild(buildWords(`Can you come to ${ev.en}?`));
-    invite.appendChild(inv);
+    head.innerHTML = `<span class="card-tag tag-combo">음식 ${i + 1}</span>`;
+    head.appendChild(makeVisual("food", f.id, f.emoji, f.en, "pair-emoji"));
+    const offer = document.createElement("div"); offer.className = "pair-line me";
+    offer.innerHTML = `<div class="pair-who">🙋 나</div>`;
+    const o = document.createElement("div"); o.className = "pair-en"; o.appendChild(buildWords(`Would you like some ${f.en}?`));
+    offer.appendChild(o);
     const ans = document.createElement("div"); ans.className = "pair-line friend";
-    ans.innerHTML = `<div class="pair-who">🙆 친구 (승낙 ○ / 거절 ×)</div>
-      <div class="pair-choice"><span class="pair-ok">○ ${acc.en}</span><span class="pair-no">× Sorry, but I can't. I have a ___.</span></div>`;
-    const meet = document.createElement("div"); meet.className = "pair-line me";
-    meet.innerHTML = `<div class="pair-who">🙋 나 (승낙했을 때)</div>`;
-    const m = document.createElement("div"); m.className = "pair-en"; m.appendChild(buildWords(`Please come to ${pl.en} at ${tm.en}.`));
-    meet.appendChild(m);
+    ans.innerHTML = `<div class="pair-who">🙆 친구</div>
+      <div class="pair-choice"><span class="pair-ok">🙆 Yes, please.</span><span class="pair-no">🙅 No, thanks.</span></div>`;
+    const ask = document.createElement("div"); ask.className = "pair-line me";
+    ask.innerHTML = `<div class="pair-who">🙋 나 (Yes, please. 라고 했을 때)</div>`;
+    const a = document.createElement("div"); a.className = "pair-en"; a.appendChild(buildWords("How's the food?"));
+    ask.appendChild(a);
+    const taste = document.createElement("div"); taste.className = "pair-line friend";
+    taste.innerHTML = `<div class="pair-who">🙆 친구 (It's ___.) · 내 예시: <b>It's ${t.en}.</b></div>`;
+    const choices = document.createElement("div"); choices.className = "pair-tastes";
+    TASTES.forEach(x => {
+      const c = document.createElement("button");
+      c.className = "chip with" + (x.id === t.id ? " on" : "");
+      c.textContent = `${x.emoji} ${x.en}`;
+      c.addEventListener("click", () => {
+        choices.querySelectorAll(".chip").forEach(el => el.classList.remove("picked"));
+        c.classList.add("picked"); speak(`It's ${x.en}.`);
+      });
+      choices.appendChild(c);
+    });
+    taste.appendChild(choices);
     const tools = document.createElement("div"); tools.className = "ptools";
-    const b1 = document.createElement("button"); b1.className = "btn small primary"; b1.textContent = "🔊 초대 듣기";
-    b1.addEventListener("click", () => speak(`Can you come to ${ev.en}?`));
-    const b2 = document.createElement("button"); b2.className = "btn small"; b2.textContent = "🔊 약속 듣기";
-    b2.addEventListener("click", () => speak(`Please come to ${pl.en} at ${tm.en}.`));
+    const b1 = document.createElement("button"); b1.className = "btn small primary"; b1.textContent = "🔊 권하기 듣기";
+    b1.addEventListener("click", () => speak(`Would you like some ${f.en}?`));
+    const b2 = document.createElement("button"); b2.className = "btn small"; b2.textContent = "🔊 대화 전체 듣기";
+    b2.addEventListener("click", () => speak(setLines(s, "accept").map(l => l.en).join(" ")));
     tools.append(b1, b2);
-    card.append(head, invite, ans, meet, tools);
+    card.append(head, offer, ans, ask, taste, tools);
     box.appendChild(card);
   });
   const note = document.createElement("p"); note.className = "hint pair-note";
-  note.innerHTML = `💬 내가 초대받았을 때: 승낙 <b>${acc.en}</b> · 거절 <b>${rs ? `Sorry, but I can't. I have a ${rs.en}.` : "(거절 문장을 정해요)"}</b>`;
+  note.innerHTML = `💬 친구가 말한 맛을 눌러 표시해 보세요. 내가 고른 맛과 같나요?`;
   box.appendChild(note);
 }
 
 /* ===========================================================
- * 🎤 컴퓨터와 미리 연습하기 (행사별 대화: 줄마다 말하기 + 역할극)
+ * 🎤 컴퓨터와 미리 연습하기 (세트별 대화: 줄마다 말하기 + 역할극)
  * =========================================================== */
 function makeSetCard(s, idx) {
   const card = document.createElement("div");
   card.className = "pcard pcard-dialog";
-  const ev = findEvent(s.event);
+  const f = findFood(s.food);
 
   const top = document.createElement("div");
   top.className = "card-top";
   const left = document.createElement("div"); left.className = "ptag-left";
-  const tag = document.createElement("span"); tag.className = "card-tag tag-combo"; tag.textContent = `🎒 행사 ${idx + 1}`;
-  const title = document.createElement("span"); title.className = "pset-title"; title.textContent = `${ev.emoji} ${ev.en}`;
+  const tag = document.createElement("span"); tag.className = "card-tag tag-combo"; tag.textContent = `🎒 음식 ${idx + 1}`;
+  const title = document.createElement("span"); title.className = "pset-title"; title.textContent = `${f.emoji} ${f.en}`;
   left.append(tag, title);
   const modeWrap = document.createElement("div"); modeWrap.className = "mode-switch";
-  const mAcc = document.createElement("button"); mAcc.className = "cat-btn active"; mAcc.textContent = "⭕ 친구가 승낙";
-  const mRef = document.createElement("button"); mRef.className = "cat-btn"; mRef.textContent = "❌ 친구가 거절";
+  const mAcc = document.createElement("button"); mAcc.className = "cat-btn active"; mAcc.textContent = "🙆 Yes, please.";
+  const mRef = document.createElement("button"); mRef.className = "cat-btn"; mRef.textContent = "🙅 No, thanks.";
   modeWrap.append(mAcc, mRef);
   top.append(left, modeWrap);
   card.appendChild(top);
@@ -710,7 +726,7 @@ function makeSetCard(s, idx) {
     allBtn.className = "btn small"; allBtn.textContent = "🔊 전체 듣기";
     allBtn.addEventListener("click", () => speak(rows.map(r => r._en).join(" ")));
     const roleA = document.createElement("button");
-    roleA.className = "btn small primary"; roleA.textContent = "🎭 내가 A (초대하기)";
+    roleA.className = "btn small primary"; roleA.textContent = "🎭 내가 A (권하기)";
     const roleB = document.createElement("button");
     roleB.className = "btn small primary"; roleB.textContent = "🎭 내가 B (대답하기)";
     roleA.addEventListener("click", () => rolePlay("A", [roleA, roleB]));
@@ -728,7 +744,7 @@ function makeSetCard(s, idx) {
       rows.forEach(r => r.classList.remove("turn"));
       if (i >= rows.length) {
         playing = false; btns.forEach(b => b.disabled = false);
-        roleNote.textContent = "🎉 역할극 끝! 잘했어요. 다른 역할이나 거절 버전도 해 볼까요?";
+        roleNote.textContent = "🎉 역할극 끝! 잘했어요. 다른 역할이나 No, thanks. 버전도 해 볼까요?";
         return;
       }
       const r = rows[i]; i++;
@@ -762,94 +778,17 @@ function renderPractice() {
   if (done.length < SET_COUNT) {
     const note = document.createElement("p");
     note.className = "practice-empty";
-    note.innerHTML = `아직 <b>${SET_COUNT - done.length}개</b> 행사가 비어 있어요. <b>🎒 내 행사 만들기</b>에서 마저 만들어 보세요.`;
+    note.innerHTML = `아직 <b>${SET_COUNT - done.length}개</b> 음식이 비어 있어요. <b>🎒 내 식탁 만들기</b>에서 마저 만들어 보세요.`;
     list.appendChild(note);
   }
 }
 
-
-/* ---------- 대답 · 약속 카드 ---------- */
-function renderAnswerGrids() {
-  renderGrid("accept-grid", ACCEPT_EXPRESSIONS, { tones: true, noIndex: true });
-  renderRefuseFill();
-  renderMeetFill();
-}
-
-/* ---------- 빈칸 채우기: 거절 (Sorry, but I can't. I have a ___.) ---------- */
-let fillReason = null;
-let fillPlace = null;
-let fillTime = null;
-let lastFillSpoken = "";
-
-function fillActions(wrap, en, ko, emoji, type) {
-  wrap.innerHTML = "";
-  if (!en) return;
-  const listenBtn = document.createElement("button");
-  listenBtn.className = "btn primary";
-  listenBtn.textContent = "🔊 문장 듣기";
-  listenBtn.addEventListener("click", () => speak(en));
-  wrap.append(listenBtn);
-  if (en !== lastFillSpoken) { lastFillSpoken = en; speak(en); }
-}
-
-function renderRefuseFill() {
-  const row = document.getElementById("refuse-chips");
-  row.innerHTML = "";
-  REFUSE_REASONS.forEach(r => {
-    row.appendChild(makeChip(`${r.emoji} ${r.en}`, "where", fillReason === r, () => {
-      fillReason = r; renderRefuseFill();
-    }));
-  });
-  const blank = document.getElementById("refuse-blank");
-  const koEl = document.getElementById("refuse-ko");
-  blank.classList.toggle("filled", !!fillReason);
-  if (fillReason) {
-    blank.innerHTML = ""; blank.appendChild(buildWords(fillReason.en));
-    koEl.textContent = `미안하지만 못 가. 나 ${fillReason.ko}(이)가 있어.`;
-    fillActions(document.getElementById("refuse-actions"),
-      `Sorry, but I can't. I have a ${fillReason.en}.`, koEl.textContent, fillReason.emoji, "answer");
-  } else {
-    blank.textContent = "________";
-    koEl.textContent = "미안하지만 못 가. 나 ________(이)가 있어.";
-    fillActions(document.getElementById("refuse-actions"), null);
-  }
-}
-
-/* ---------- 빈칸 채우기: 약속 (Please come to ___ at ___.) ---------- */
-function renderMeetFill() {
-  const pRow = document.getElementById("meet-place-chips");
-  const tRow = document.getElementById("meet-time-chips");
-  pRow.innerHTML = ""; tRow.innerHTML = "";
-  PLACE_EXPRESSIONS.forEach(p => {
-    pRow.appendChild(makeChip(`${p.emoji} ${p.en}`, "place", fillPlace === p, () => {
-      fillPlace = p; renderMeetFill();
-    }));
-  });
-  TIME_EXPRESSIONS.forEach(t => {
-    tRow.appendChild(makeChip(`${t.emoji} ${t.en}`, "with", fillTime === t, () => {
-      fillTime = t; renderMeetFill();
-    }));
-  });
-  const pb = document.getElementById("meet-place-blank");
-  const tb = document.getElementById("meet-time-blank");
-  pb.classList.toggle("filled", !!fillPlace);
-  tb.classList.toggle("filled", !!fillTime);
-  if (fillPlace) { pb.innerHTML = ""; pb.appendChild(buildWords(fillPlace.en)); } else pb.textContent = "________";
-  if (fillTime) { tb.innerHTML = ""; tb.appendChild(buildWords(fillTime.en)); } else tb.textContent = "________";
-  const koEl = document.getElementById("meet-ko");
-  koEl.textContent = `${fillTime ? fillTime.ko : "________"}에 ${fillPlace ? fillPlace.ko : "________"}(으)로 와 줘.`;
-  if (fillPlace && fillTime) {
-    fillActions(document.getElementById("meet-actions"),
-      `Please come to ${fillPlace.en} at ${fillTime.en}.`, koEl.textContent, fillPlace.emoji, "meet");
-  } else {
-    fillActions(document.getElementById("meet-actions"), null);
-  }
-}
-
-
 /* ---------- 초기 렌더 ---------- */
 renderSuggestions();
-renderAnswerGrids();
+renderAnswerGrid();
+renderOfferFill();
+renderTasteGrid();
+renderTasteFill();
 renderBuilder();
 updateSetPreview();
 renderSheetSummary();
